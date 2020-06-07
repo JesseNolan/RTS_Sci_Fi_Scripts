@@ -13,9 +13,9 @@ public class AfterConversion : GameObjectConversionSystem
         Debug.Log("AfterConversion executed");
         if (!started)
         {
-            
 
-            //TileSelectionSystem.spawnSelectedTile();
+
+            TileSelectionSystem.spawnSelectedTile();
 
 
 
@@ -43,8 +43,4 @@ public class AfterConversion : GameObjectConversionSystem
        
     }
 
-    protected override void OnCreate()
-    {
-       
-    }
 }
