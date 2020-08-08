@@ -49,7 +49,7 @@ namespace Unity.Physics.Extensions
 
         protected override JobHandle OnUpdate(JobHandle inputDeps)
         {
-            var handle = JobHandle.CombineDependencies(inputDeps, m_BuildPhysicsWorldSystem.FinalJobHandle);
+            var handle = JobHandle.CombineDependencies(inputDeps, m_BuildPhysicsWorldSystem.GetOutputDependency());
             var gameState = m_gameState.ToComponentDataArray<GameState>(Allocator.TempJob);
 
             if (Input.GetMouseButtonDown(0) && (Camera.main != null) && (gameState[0].gameState == e_GameStates.state_Idle) && (!EventSystem.current.IsPointerOverGameObject()))
@@ -71,7 +71,7 @@ namespace Unity.Physics.Extensions
                         Filter = CollisionFilter.Default,
                     },
                     selected = selectedEntities,
-                }.Schedule(JobHandle.CombineDependencies(handle, m_BuildPhysicsWorldSystem.FinalJobHandle));
+                }.Schedule(JobHandle.CombineDependencies(handle, m_BuildPhysicsWorldSystem.GetOutputDependency()));
 
                 handle.Complete();
 

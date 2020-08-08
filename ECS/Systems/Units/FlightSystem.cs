@@ -150,42 +150,42 @@ public class FlightSystem : JobComponentSystem
 
     public static void Spawn_Test_Unit()
     {
-        var spawner = m_generalSpawner.ToComponentDataArray<GeneralSpawner>(Allocator.TempJob);
-        var buildings = m_translations.ToEntityArray(Allocator.TempJob);
-        var buildingComponents = m_translations.ToComponentDataArray<Building>(Allocator.TempJob);
-        var translation = m_translations.ToComponentDataArray<Translation>(Allocator.TempJob);
+        //var spawner = m_generalSpawner.ToComponentDataArray<GeneralSpawner>(Allocator.TempJob);
+        //var buildings = m_translations.ToEntityArray(Allocator.TempJob);
+        //var buildingComponents = m_translations.ToComponentDataArray<Building>(Allocator.TempJob);
+        //var translation = m_translations.ToComponentDataArray<Translation>(Allocator.TempJob);
 
-        if (buildingComponents.Length >= 2)
-        {
-            for (int i = 0; i < 1; i++)
-            {
-                int ran1 = UnityEngine.Random.Range(0, buildingComponents.Length);
-                int ran2 = UnityEngine.Random.Range(0, buildingComponents.Length);
+        //if (buildingComponents.Length >= 2)
+        //{
+        //    for (int i = 0; i < 1; i++)
+        //    {
+        //        int ran1 = UnityEngine.Random.Range(0, buildingComponents.Length);
+        //        int ran2 = UnityEngine.Random.Range(0, buildingComponents.Length);
 
-                var entity = MainLoader.entityManager.Instantiate(spawner[0].testUnit);
-                Translation pos = translation[0];
-                MainLoader.entityManager.SetComponentData(entity, pos);
-                MainLoader.entityManager.SetComponentData(entity, new Rotation { Value = Quaternion.Euler(0, 0, 0) });
-                Debug.Log(translation[ran1].Value);
-                Debug.Log(translation[ran2].Value);
-                Citizen newCit = new Citizen { home = buildings[ran1],
-                                                job = buildings[ran2],
-                                                dst = buildings[ran2],
-                                                home_Pos = translation[ran1].Value,
-                                                job_Pos = translation[ran2].Value,
-                                                timer = 0,
-                                                idleTime = 200,
-                                                };
-                MainLoader.entityManager.AddComponent(entity, typeof(AI_Citizen_State));
-                MainLoader.entityManager.AddComponent(entity, typeof(Citizen));
-                MainLoader.entityManager.SetComponentData(entity, newCit);
-            }
-        }
+        //        var entity = MainLoader.entityManager.Instantiate(spawner[0].testUnit);
+        //        Translation pos = translation[0];
+        //        MainLoader.entityManager.SetComponentData(entity, pos);
+        //        MainLoader.entityManager.SetComponentData(entity, new Rotation { Value = Quaternion.Euler(0, 0, 0) });
+        //        Debug.Log(translation[ran1].Value);
+        //        Debug.Log(translation[ran2].Value);
+        //        Citizen newCit = new Citizen { home = buildings[ran1],
+        //                                        job = buildings[ran2],
+        //                                        dst = buildings[ran2],
+        //                                        home_Pos = translation[ran1].Value,
+        //                                        job_Pos = translation[ran2].Value,
+        //                                        timer = 0,
+        //                                        idleTime = 200,
+        //                                        };
+        //        MainLoader.entityManager.AddComponent(entity, typeof(AI_Citizen_State));
+        //        MainLoader.entityManager.AddComponent(entity, typeof(Citizen));
+        //        MainLoader.entityManager.SetComponentData(entity, newCit);
+        //    }
+        //}
 
-        buildings.Dispose();
-        spawner.Dispose();
-        buildingComponents.Dispose();
-        translation.Dispose();
+        //buildings.Dispose();
+        //spawner.Dispose();
+        //buildingComponents.Dispose();
+        //translation.Dispose();
     }
 
 

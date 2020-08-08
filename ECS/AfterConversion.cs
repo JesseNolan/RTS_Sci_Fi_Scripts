@@ -14,12 +14,13 @@ public class AfterConversion : GameObjectConversionSystem
         if (!started)
         {
 
+            //RoadSystem.InitialiseRoads();
 
             TileSelectionSystem.spawnSelectedTile();
 
 
 
-            //UISystem.SetupGameObjects();
+            UISystem.SetupGameObjects();
 
             //TerrainSystem.SetupTerrain();
 
@@ -27,15 +28,12 @@ public class AfterConversion : GameObjectConversionSystem
 
             //TerrainSystem.LoadTileMap();
 
-            ////TerrainSystem.GenerateResources();
+            //TerrainSystem.GenerateResources();
 
             //ResourceSystem.CreateResourceStorage();
 
-            ////ResourceSystem.SpawnResources();
-
             ////LocalNavMeshBuilder.Instance.updateMeshes();
 
-            ////RoadSystem.InitialiseRoads();
 
 
             started = true;

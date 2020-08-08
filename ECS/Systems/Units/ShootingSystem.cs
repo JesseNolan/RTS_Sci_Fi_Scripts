@@ -23,7 +23,7 @@ public class ShootingSystem : JobComponentSystem
 
     public struct SpawnProjectileJob : IJobForEachWithEntity<FriendlyUnit, Weapon, LocalToWorld>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<HelloSpawner> spawner;
         [NativeDisableParallelForRestriction] public BufferFromEntity<ProjectileBuffer> projectileBuffer;
         [ReadOnly] public ComponentDataFromEntity<EnemyUnit> enemyData;
@@ -32,7 +32,7 @@ public class ShootingSystem : JobComponentSystem
         {
             if (w.gotTarget == 1)
             {
-                if (enemyData.Exists(w.targetEntity))
+                if (enemyData.HasComponent(w.targetEntity))
                 {
                     if (w.firingTimer == 0)
                     {
@@ -91,7 +91,7 @@ public class ShootingSystem : JobComponentSystem
 
     public struct ProcessProjectileHits : IJobForEachWithEntity<EnemyUnit>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly] public NativeArray<Projectile> projectiles;
         [ReadOnly] public NativeArray<Entity> pEnt;
 
@@ -159,7 +159,7 @@ public class ShootingSystem : JobComponentSystem
         var enemyData = GetComponentDataFromEntity<EnemyUnit>();
         var spawnjob = new SpawnProjectileJob
         {
-            CommandBuffer = cb1.ToConcurrent(),
+            CommandBuffer = cb1.AsParallelWriter(),
             spawner = spawner,
             enemyData = enemyData,
         }.Schedule(this, inputDeps);
@@ -190,7 +190,7 @@ public class ShootingSystem : JobComponentSystem
         var pEnt = m_projectileQuery.ToEntityArray(Allocator.TempJob);
         var processProjHits = new ProcessProjectileHits
         {
-            CommandBuffer = cb2.ToConcurrent(),
+            CommandBuffer = cb2.AsParallelWriter(),
             projectiles = projectiles,
             pEnt = pEnt,
 

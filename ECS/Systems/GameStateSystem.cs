@@ -15,6 +15,12 @@ public class GameStateSystem : JobComponentSystem
     public EntityQuery q_stateChange;
     public EntityQuery q_currState;
 
+    protected override void OnCreate()
+    {
+        q_stateChange = GetEntityQuery(typeof(ChangeGameStateRequest));
+        q_currState = GetEntityQuery(typeof(GameState));
+    }
+
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
         var changeState = q_stateChange.ToComponentDataArray<ChangeGameStateRequest>(Allocator.TempJob);
@@ -42,11 +48,6 @@ public class GameStateSystem : JobComponentSystem
         return inputDeps;
     }
 
-    protected override void OnCreate()
-    {
-        q_stateChange = GetEntityQuery(typeof(ChangeGameStateRequest));
-        q_currState = GetEntityQuery(typeof(GameState));
-    }
 }
 
 public struct ChangeGameStateRequest : IComponentData

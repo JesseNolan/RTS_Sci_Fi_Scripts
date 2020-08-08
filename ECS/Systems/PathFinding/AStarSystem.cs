@@ -21,7 +21,7 @@ public class AStarSystem : JobComponentSystem
         [ReadOnly] public int maxpathLength;
         [ReadOnly] public int tilesPerWidth;
         //[ReadOnly] public BufferFromEntity<PathCompleteBuffer> pathCompleteBuffer;
-        public EntityCommandBuffer.Concurrent commandBuffer;
+        public EntityCommandBuffer.ParallelWriter commandBuffer;
 
         public void Execute(Entity entity, int index, DynamicBuffer<PathCompleteBuffer> buff, ref PathRequest p)
         {
@@ -267,7 +267,7 @@ public class AStarSystem : JobComponentSystem
             maxIter = 1000,
             tilesPerWidth = TerrainSystem.tilesPerWidth,
             //pathCompleteBuffer = GetBufferFromEntity<PathCompleteBuffer>(false),
-            commandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            commandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
 
         }.Schedule(this, inputDeps);
 

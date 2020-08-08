@@ -21,7 +21,7 @@ public class GridDisplaySystem : JobComponentSystem
 
     public struct GridHighlightSpawn : IJobForEachWithEntity<Tile>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly] public GameState gameState;
         [ReadOnly] public float3 selectedCoord;
         [ReadOnly] public float gridHighlightDisplayDistance;
@@ -56,7 +56,7 @@ public class GridDisplaySystem : JobComponentSystem
 
     public struct GridHighlightDestroy : IJobForEachWithEntity<GridTileHighlight, Translation>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly] public GameState gameState;
         [ReadOnly] public float3 selectedCoord;
         [ReadOnly] public float gridHighlightDisplayDistance;
@@ -89,7 +89,7 @@ public class GridDisplaySystem : JobComponentSystem
 
         var gridSpawnJob = new GridHighlightSpawn
         {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
             gameState = gameState[0],
             selectedCoord = coord,
             gridHighlightDisplayDistance = Settings.Instance.gridHighlightDisplayDistance,
@@ -99,7 +99,7 @@ public class GridDisplaySystem : JobComponentSystem
 
         var gridDestroyJob = new GridHighlightDestroy
         {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
             gameState = gameState[0],
             selectedCoord = coord,
             gridHighlightDisplayDistance = Settings.Instance.gridHighlightDisplayDistance,

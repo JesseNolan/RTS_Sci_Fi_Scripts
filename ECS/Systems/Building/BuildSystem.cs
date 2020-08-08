@@ -52,7 +52,7 @@ public class BuildSystem : JobComponentSystem
 
     public struct FinaliseBuilding : IJobForEachWithEntity<PlacingBuilding, Building, Translation>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<PlayerInput> input;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<SelectedTile> selectedTile;
         [NativeDisableParallelForRestriction] public NativeArray<Tile> tileMap;
@@ -191,7 +191,7 @@ public class BuildSystem : JobComponentSystem
 
     public struct CompleteBuildingConstruction : IJobForEachWithEntity<ConstructingBuilding, Building, CountdownTimer, Translation>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly] public BuildingTypeSpawner spawner;
 
         public void Execute(Entity entity, int index, ref ConstructingBuilding c, ref Building b, ref CountdownTimer timer, ref Translation pos)
@@ -227,6 +227,7 @@ public class BuildSystem : JobComponentSystem
                 case e_BuildingTypes.Terran_Plasma_Cannon:
                     return s.Terran_PlasmaCannon;
                 default:
+                    Debug.Log("No building type found");
                     return Entity.Null;
             }
         }
@@ -234,7 +235,7 @@ public class BuildSystem : JobComponentSystem
 
     public struct DestroyBuildingJob : IJobForEachWithEntity<Destroy_Building>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<Building> buildings;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<Entity> buildingEntities;
         [NativeDisableParallelForRestriction] public NativeArray<Tile> tileMap;
@@ -308,7 +309,7 @@ public class BuildSystem : JobComponentSystem
 
         var finaliseJob = new FinaliseBuilding
         {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
             input = input,
             selectedTile = selected,
             tileMap = tileMap,
@@ -323,7 +324,7 @@ public class BuildSystem : JobComponentSystem
 
         var completeBuildingConstruction = new CompleteBuildingConstruction
         {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
             spawner = spawn[0],
         }.Schedule(this, finaliseJob);
 
@@ -331,7 +332,7 @@ public class BuildSystem : JobComponentSystem
 
         var destroyJob = new DestroyBuildingJob
         {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
             buildings = q_buildingQuery.ToComponentDataArray<Building>(Allocator.TempJob),
             buildingEntities = q_buildingQuery.ToEntityArray(Allocator.TempJob),
             tileMap = tileMap
@@ -472,16 +473,16 @@ public class BuildSystem : JobComponentSystem
         newState.gameState = e_GameStates.state_RoadPlacement;
         MainLoader.entityManager.SetComponentData(gameStateEntity[0], newState);
 
-        //var entity = MainLoader.entityManager.Instantiate(prefab);
-        //var position = new float3(515, 50, 515);
-        //Translation pos = new Translation { Value = position };
-        //MainLoader.entityManager.SetComponentData(entity, pos);
+        var entity = MainLoader.entityManager.Instantiate(prefab);
+        var position = new float3(515, 50, 515);
+        Translation pos = new Translation { Value = position };
+        MainLoader.entityManager.SetComponentData(entity, pos);
         //MainLoader.entityManager.AddComponent(entity, typeof(PlacingRoad));
-        //MainLoader.entityManager.AddComponent(entity, typeof(RoadDisplay));
-        //MainLoader.entityManager.SetComponentData(entity, new RoadDisplay { placing = 1 });
-        //MainLoader.entityManager.AddComponent(entity, typeof(RoadCurrentlyBuilding));       
-        ////MainLoader.entityManager.AddComponent(entity, typeof(Road));
-        //MainLoader.entityManager.SetComponentData(entity, new Rotation { Value = Quaternion.Euler(0, 0, 0) });
+        MainLoader.entityManager.AddComponent(entity, typeof(RoadDisplay));
+        MainLoader.entityManager.SetComponentData(entity, new RoadDisplay { placing = 1 });
+        MainLoader.entityManager.AddComponent(entity, typeof(RoadCurrentlyBuilding));
+        //MainLoader.entityManager.AddComponent(entity, typeof(Road));
+        MainLoader.entityManager.SetComponentData(entity, new Rotation { Value = Quaternion.Euler(0, 0, 0) });
 
         gameStateEntity.Dispose();
         gameState.Dispose();

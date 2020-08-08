@@ -12,19 +12,19 @@ using Unity.Jobs;
 public class ResourceSystem : JobComponentSystem
 {
     public EntityQuery q_ResourceStorage;
-    public EntityCommandBufferSystem commandBuffer;
+    public BeginInitializationEntityCommandBufferSystem m_EntityCommandBufferSystem;
 
 
     protected override void OnCreate()
     {
         q_ResourceStorage = GetEntityQuery(typeof(ResourceStorage));
-        commandBuffer = World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
+        m_EntityCommandBufferSystem = World.GetOrCreateSystem<BeginInitializationEntityCommandBufferSystem>();
     }
 
 
     public struct RemoveEmptyResources : IJobForEachWithEntity<Resource>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
 
         public void Execute(Entity entity, int index, ref Resource r)
         {
@@ -37,15 +37,27 @@ public class ResourceSystem : JobComponentSystem
         }
     }
 
-
+    bool initialSpawn = false;
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
-        var removeEmptyResources = new RemoveEmptyResources
+        if(!initialSpawn)
         {
-            CommandBuffer = commandBuffer.CreateCommandBuffer().ToConcurrent(),
-        }.Schedule(this, inputDeps);
+            Debug.Log("Creating resource storage");
+            CreateResourceStorage();
+            initialSpawn = true;
+        }
 
+        var commandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+
+        var removeEmptyResources = Entities
+            .ForEach((Entity entity, int entityInQueryIndex, ref Resource r) =>
+            {
+                if (r.resourceAmount <= 0)
+                {
+                    commandBuffer.DestroyEntity(entityInQueryIndex, entity);
+                }
+            }).Schedule(inputDeps);
 
         return removeEmptyResources;
     }

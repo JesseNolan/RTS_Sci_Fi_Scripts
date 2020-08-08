@@ -43,9 +43,18 @@ public class TerrainSystem : ComponentSystem
         q_gameState = GetEntityQuery(typeof(GameState));
     }
 
+    bool initialSpawn = false;
+
     protected override void OnUpdate()
     {
-        
+        if (!initialSpawn)
+        {
+            SetupTerrain();
+            //generateRocks();
+            LoadTileMap();
+            GenerateResources();
+            initialSpawn = true;
+        }
     }
 
 
@@ -80,7 +89,22 @@ public class TerrainSystem : ComponentSystem
             newTile.tileID = i;
             newTile.xIndex = xIndex;
             newTile.yIndex = yIndex;
-            if ((height1 == height2) && (height2 == height3) && (height3 == height4) && (height1 > 10))
+
+
+            float diff1 = Mathf.Abs(height2 - height1);
+            float diff2 = Mathf.Abs(height3 - height2);
+            float diff3 = Mathf.Abs(height4 - height3);
+            float diff4 = Mathf.Abs(height1 - height4);
+            float diff5 = Mathf.Abs(height3 - height1);
+            float diff6 = Mathf.Abs(height4 - height2);
+
+            float[] diffList = { diff1, diff2, diff3, diff4, diff5 };
+
+            float maxDiff = Mathf.Max(diffList);
+
+
+            //if ((height1 == height2) && (height2 == height3) && (height3 == height4) && (height1 > 10))
+            if (maxDiff < 1)
                 newTile.isValid = 1;           
             else
                 newTile.isValid = 0;           

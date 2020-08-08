@@ -54,32 +54,32 @@ public class RoadSystem : JobComponentSystem
      */
 
 
-    public struct StartRoadBuildingJob : IJobForEachWithEntity<UI_Command_StartRoadBuilding>
-    {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
-        //[ReadOnly] public ComponentDataFromEntity<GameState> gameStateComponentData;
-        //[ReadOnly] public NativeArray<Entity> stateEntity;
-        public NativeArray<GameState> gameState;
+    //public struct StartRoadBuildingJob : IJobForEachWithEntity<UI_Command_StartRoadBuilding>
+    //{
+    //    public EntityCommandBuffer.Concurrent CommandBuffer;
+    //    //[ReadOnly] public ComponentDataFromEntity<GameState> gameStateComponentData;
+    //    //[ReadOnly] public NativeArray<Entity> stateEntity;
+    //    public NativeArray<GameState> gameState;
 
-        public void Execute(Entity entity, int index, [ReadOnly] ref UI_Command_StartRoadBuilding c0)
-        {
-            var state = gameState[0];
-            state.gameState = e_GameStates.state_RoadPlacement;
-            gameState[0] = state;
+    //    public void Execute(Entity entity, int index, [ReadOnly] ref UI_Command_StartRoadBuilding c0)
+    //    {
+    //        var state = gameState[0];
+    //        state.gameState = e_GameStates.state_RoadPlacement;
+    //        gameState[0] = state;
 
-            //var gameState = gameStateComponentData[stateEntity[0]];
-            //gameState.gameState = e_GameStates.state_RoadPlacement;
-            //CommandBuffer.SetComponent(index, stateEntity[0], gameState);
+    //        //var gameState = gameStateComponentData[stateEntity[0]];
+    //        //gameState.gameState = e_GameStates.state_RoadPlacement;
+    //        //CommandBuffer.SetComponent(index, stateEntity[0], gameState);
 
 
-            CommandBuffer.DestroyEntity(index, entity);
-        }
-    }
+    //        CommandBuffer.DestroyEntity(index, entity);
+    //    }
+    //}
 
 
     public struct PreviewRoadJob : IJobForEachWithEntity_EBCC<PathCompleteBuffer, PathRequest, PathRequestType_Road>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [NativeDisableParallelForRestriction] public NativeArray<Tile> tileMap;
         [ReadOnly] public BuildingTypeSpawner spawner;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<Entity> roadEntities;
@@ -128,7 +128,7 @@ public class RoadSystem : JobComponentSystem
                             CommandBuffer.SetComponent(index, road, newPos);
                             CommandBuffer.AddComponent(index, road, new RoadDisplay { mapIndex = buff[i], placing = 1 });
                             CommandBuffer.AddComponent(index, road, new PreviewRoad { tileIndex = buff[i] });
-                            CommandBuffer.AddComponent(index, road, new RoadCurrentlyBuilding());
+                            CommandBuffer.AddComponent(index, road, new RoadCurrentlyBuilding { });
 
                             tempTile.displayRoad = true;
                             tileMap[buff[i]] = tempTile;
@@ -146,7 +146,7 @@ public class RoadSystem : JobComponentSystem
 
     public struct FinaliseRoad : IJobForEachWithEntity<RoadCurrentlyBuilding, RoadDisplay>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<PlayerInput> input;
         [ReadOnly, DeallocateOnJobCompletion] public NativeArray<SelectedTile> selectedTile;
         [NativeDisableParallelForRestriction] public NativeArray<Tile> tileMap;
@@ -190,9 +190,9 @@ public class RoadSystem : JobComponentSystem
 
     public struct RoadPlacementJob : IJobForEachWithEntity<RoadDisplay, Translation, Rotation>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly] public NativeArray<Tile> tiles;
-        [ReadOnly, DeallocateOnJobCompletion] public NativeArray<Entity> roads;
+        [ReadOnly] public NativeArray<Entity> roads;
         public int tilesPerWidth;
 
         public void Execute(Entity entity, int index, ref RoadDisplay road, ref Translation l, ref Rotation r)
@@ -273,21 +273,32 @@ public class RoadSystem : JobComponentSystem
         }
     }
 
+
+    bool initialSpawn = false;
+
     protected override JobHandle OnUpdate(JobHandle inputDeps)
     {
+        if(!initialSpawn)
+        {
+            InitialiseRoads();
+            initialSpawn = true;
+        }
+
+
+
         var gameStateArray = m_gameStateGroup.ToComponentDataArray<GameState>(Allocator.TempJob);
 
-        var cb1 = new EntityCommandBuffer(Allocator.TempJob);
-        var startBuildingRoadJob = new StartRoadBuildingJob
-        {
-            CommandBuffer = cb1.ToConcurrent(),
-            gameState = gameStateArray,
+        //var cb1 = new EntityCommandBuffer(Allocator.TempJob);
+        //var startBuildingRoadJob = new StartRoadBuildingJob
+        //{
+        //    CommandBuffer = cb1.ToConcurrent(),
+        //    gameState = gameStateArray,
 
-        }.Schedule(this, inputDeps);
-        //m_EntityCommandBufferSystem.AddJobHandleForProducer(startBuildingRoadJob);
-        startBuildingRoadJob.Complete();
-        cb1.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
-        cb1.Dispose();
+        //}.Schedule(this, inputDeps);
+        ////m_EntityCommandBufferSystem.AddJobHandleForProducer(startBuildingRoadJob);
+        //startBuildingRoadJob.Complete();
+        //cb1.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
+        //cb1.Dispose();
 
         if (gameStateArray[0].gameState == e_GameStates.state_RoadPlacement)
         {
@@ -320,13 +331,13 @@ public class RoadSystem : JobComponentSystem
 
             var previewRoadJob = new PreviewRoadJob
             {
-                CommandBuffer = cb2.ToConcurrent(),
+                CommandBuffer = cb2.AsParallelWriter(),
                 tileMap = tileMap,
                 spawner = spawn[0],
                 roadEntities = roadEntities,
                 roadData = roadComponentData,
                 gameState = gameStateArray,
-            }.Schedule(this, startBuildingRoadJob);
+            }.Schedule(this, inputDeps);
             //m_EntityCommandBufferSystem.AddJobHandleForProducer(previewRoadJob);
             previewRoadJob.Complete();
             cb2.Playback(World.DefaultGameObjectInjectionWorld.EntityManager);
@@ -334,7 +345,7 @@ public class RoadSystem : JobComponentSystem
 
             var finaliseRoadJob = new FinaliseRoad
             {
-                CommandBuffer = cb3.ToConcurrent(),
+                CommandBuffer = cb3.AsParallelWriter(),
                 input = input,
                 selectedTile = selected,
                 gameState = gameStateArray,
@@ -348,7 +359,7 @@ public class RoadSystem : JobComponentSystem
             var roadJob = new RoadPlacementJob
             {
                 tiles = tileMap,
-                CommandBuffer = cb4.ToConcurrent(),
+                CommandBuffer = cb4.AsParallelWriter(),
                 tilesPerWidth = TerrainSystem.tilesPerWidth,
                 roads = roads,
 

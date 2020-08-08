@@ -21,13 +21,13 @@ public class MainLoader
 
     public static Settings settings;
 
-    public static EntityManager entityManager;
+    public static EntityManager entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
 
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     public static void Initialise()
     {
-        entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
+        //entityManager = World.DefaultGameObjectInjectionWorld.EntityManager;
         //tileArchetype = entityManager.CreateArchetype(typeof(Tile), typeof(Transform), typeof(Position));
         PlayerControllerArchetype = entityManager.CreateArchetype(typeof(Transform), typeof(PlayerInput));
 

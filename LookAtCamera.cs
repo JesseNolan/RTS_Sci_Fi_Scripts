@@ -17,7 +17,7 @@ public class LookAtCamera : JobComponentSystem
 
     public struct CameraFaceJob : IJobForEachWithEntity<CameraFacing, LocalToWorld, Parent>
     {
-        public EntityCommandBuffer.Concurrent CommandBuffer;
+        public EntityCommandBuffer.ParallelWriter CommandBuffer;
         [ReadOnly] public float3 camera;
         [ReadOnly] public ComponentDataFromEntity<Rotation> allRotations;
 
@@ -46,7 +46,7 @@ public class LookAtCamera : JobComponentSystem
 
         var lookJob = new CameraFaceJob
         {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().ToConcurrent(),
+            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
             camera = Camera.main.transform.position,
             allRotations = rotation,
         }.Schedule(this, inputDeps);

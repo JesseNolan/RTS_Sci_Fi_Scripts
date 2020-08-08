@@ -10,6 +10,7 @@ using Unity.Jobs;
 using UnityEngine.UI;
 using Unity.Collections;
 
+[UpdateAfter(typeof(ResourceSystem))]
 public class UISystem : ComponentSystem
 {
     EntityQuery m_inputQuery;
@@ -260,8 +261,18 @@ public class UISystem : ComponentSystem
         Canvas_Buttons.enabled = true;
     }
 
+
+    bool initialSpawn = false;
+
     protected override void OnUpdate()
     {
+        if(!initialSpawn)
+        {
+            SetupGameObjects();
+            initialSpawn = true;
+        }
+
+
         //var placingBuildings = m_placingBuildingQuery.ToComponentDataArray<PlacingBuilding>(Allocator.TempJob);
         var selectedBuilding = q_buildingSelected.ToComponentDataArray<Building>(Allocator.TempJob);
         var selectedBuildingEntity = q_buildingSelected.ToEntityArray(Allocator.TempJob);
@@ -321,10 +332,12 @@ public class UISystem : ComponentSystem
         /*###########################################################################*/
         // This section handles updating the resource value in UI
 
-        ResourceStorage_Rock_Value.text = resourceStorage[0].Rock.ToString();
-        ResourceStorage_Iron_Value.text = resourceStorage[0].Iron.ToString();
-        ResourceStorage_Money_Value.text = resourceStorage[0].Money.ToString();
-
+        if(resourceStorage.Length > 0)
+        {
+            ResourceStorage_Rock_Value.text = resourceStorage[0].Rock.ToString();
+            ResourceStorage_Iron_Value.text = resourceStorage[0].Iron.ToString();
+            ResourceStorage_Money_Value.text = resourceStorage[0].Money.ToString();
+        }
         /*###########################################################################*/
         // This secion updates the amount of resource left for the selected resource on the map
         switch (currentlyEnabledResourceType)

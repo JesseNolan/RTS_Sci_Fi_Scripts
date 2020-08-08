@@ -23,7 +23,7 @@ public class TargettingSystem : JobComponentSystem
         {
             LocalToWorld fP = allPositions[friendlyEntity];
 
-            if (enemyData.Exists(w.targetEntity) && w.gotTarget == 1)
+            if (enemyData.HasComponent(w.targetEntity) && w.gotTarget == 1)
             {
                 // if we currently have a target, check to see if it is still in range and return if true               
                 LocalToWorld position = allPositions[w.targetEntity];
