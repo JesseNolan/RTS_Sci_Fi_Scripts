@@ -8,66 +8,138 @@ using Unity.Transforms;
 using Unity.Burst;
 using Unity.Collections;
 
-public class TargettingSystem : JobComponentSystem
+public class TargettingSystem : SystemBase
 {
-    EntityQuery m_enemyGroup;
-  
-    [BurstCompile]
-    struct TargettingJob : IJobForEachWithEntity<FriendlyUnit, Weapon>
-    {
-        [ReadOnly, DeallocateOnJobCompletion] public NativeArray<Entity> enemyEntities;
-        [ReadOnly] public ComponentDataFromEntity<EnemyUnit> enemyData;
-        [ReadOnly] public ComponentDataFromEntity<LocalToWorld> allPositions;
-
-        public void Execute([ReadOnly] Entity friendlyEntity, [ReadOnly] int index, [ReadOnly] ref FriendlyUnit c0, ref Weapon  w)
-        {
-            LocalToWorld fP = allPositions[friendlyEntity];
-
-            if (enemyData.HasComponent(w.targetEntity) && w.gotTarget == 1)
-            {
-                // if we currently have a target, check to see if it is still in range and return if true               
-                LocalToWorld position = allPositions[w.targetEntity];
-                float mag = math.distance(fP.Position, position.Position);
-                //check to see if target is still within firing distance, if not, get new target
-                if (mag <= w.firingDistance)
-                    return;
-                        
-            }
-            else
-            {
-                w.gotTarget = 0;
-
-                for (int i = 0; i < enemyEntities.Length; i++)
-                {
-                    LocalToWorld enemyPosition = allPositions[enemyEntities[i]];
-                    float mag = math.distance(fP.Position, enemyPosition.Position);
-                    if (mag <= w.firingDistance)
-                    {
-                        w.gotTarget = 1;
-                        w.firingTimer = 0;
-                        w.targetEntity = enemyEntities[i];
-                    }
-                }
-            }                  
-        }
-    }
+    EntityQuery m_enemyQuery;
+    EntityQuery m_friendlyQuery;
 
     protected override void OnCreate()
     {
-        m_enemyGroup = GetEntityQuery(typeof(EnemyUnit), typeof(Translation));
+        m_enemyQuery = GetEntityQuery(typeof(EnemyUnit), typeof(Translation));
+        m_friendlyQuery = GetEntityQuery(typeof(FriendlyUnit), typeof(Translation));
     }
 
-    protected override JobHandle OnUpdate(JobHandle inputDeps)
+
+    protected override void OnUpdate()
     {       
-        var enemyEntities_JobData = m_enemyGroup.ToEntityArray(Allocator.TempJob);
-        var enemyData = GetComponentDataFromEntity<EnemyUnit>(true);
-        var job = new TargettingJob
-        {
-            enemyEntities = enemyEntities_JobData,
-            allPositions = GetComponentDataFromEntity<LocalToWorld>(),
-            enemyData = enemyData,
-        };
-        return job.Schedule(this, inputDeps);
+        var enemyEntities_JobData = m_enemyQuery.ToEntityArray(Allocator.TempJob);
+        var friendlyEntities = m_friendlyQuery.ToEntityArray(Allocator.TempJob);
+
+        // This task gets all entities that are friendly units with a weapon and finds the closest
+        // enemy unit to that unit. If the enemy is within weapon range, it is targetted
+        var friendlyTarget = Entities
+            .ForEach((Entity entity, int entityInQueryIndex, ref Weapon w, in FriendlyUnit c0) =>
+            {
+                LocalToWorld fP = GetComponent<LocalToWorld>(entity);
+
+                if (HasComponent<Target>(w.targetEntity) && w.gotTarget == 1)
+                {
+                    // if we currently have a target, check to see if it is still in range and return if true               
+                    LocalToWorld position = GetComponent<LocalToWorld>(w.targetEntity);
+                    float mag = math.distance(fP.Position, position.Position);
+                    //check to see if target is still within firing distance, if not, get new target
+                    if (mag <= w.firingDistance)
+                        return;
+                }
+                else
+                {
+                    w.gotTarget = 0;
+
+                    float closest = Mathf.Infinity;
+                    int closestIndex = 0;
+
+                    for (int i = 0; i < enemyEntities_JobData.Length; i++)
+                    {
+                        LocalToWorld enemyPosition = GetComponent<LocalToWorld>(enemyEntities_JobData[i]);
+                        float mag = math.distance(fP.Position, enemyPosition.Position);
+
+                        // find the closest enemy
+                        if (closest < 0)
+                        {
+                            closest = mag;
+                            closestIndex = i;
+                        }
+                        else
+                        {
+                            if (closest > mag)
+                            {
+                                closest = mag;
+                                closestIndex = i;
+                            }
+                        }
+                    }
+
+                    if (closest <= w.firingDistance)
+                    {
+                        w.gotTarget = 1;
+                        w.firingTimer = 0;
+                        w.targetEntity = enemyEntities_JobData[closestIndex];
+                    }
+                }
+            }
+            ).Schedule(Dependency);
+
+        friendlyTarget.Complete();
+
+        var enemyTarget = Entities
+            .ForEach((Entity entity, int entityInQueryIndex, ref Weapon w, in EnemyUnit c0) =>
+            {
+                LocalToWorld fP = GetComponent<LocalToWorld>(entity);
+
+                if (HasComponent<Target>(w.targetEntity) && w.gotTarget == 1)
+                {
+                    // if we currently have a target, check to see if it is still in range and return if true               
+                    LocalToWorld position = GetComponent<LocalToWorld>(w.targetEntity);
+                    float mag = math.distance(fP.Position, position.Position);
+                    //check to see if target is still within firing distance, if not, get new target
+                    if (mag <= w.firingDistance)
+                        return;
+                }
+                else
+                {
+                    w.gotTarget = 0;
+
+                    float closest = Mathf.Infinity;
+                    int closestIndex = 0;
+
+                    for (int i = 0; i < friendlyEntities.Length; i++)
+                    {
+                        LocalToWorld friendlyPosition = GetComponent<LocalToWorld>(friendlyEntities[i]);
+                        float mag = math.distance(fP.Position, friendlyPosition.Position);
+
+                        // find the closest enemy
+                        if (closest < 0)
+                        {
+                            closest = mag;
+                            closestIndex = i;
+                        }
+                        else
+                        {
+                            if (closest > mag)
+                            {
+                                closest = mag;
+                                closestIndex = i;
+                            }
+                        }
+                    }
+
+                    if (closest <= w.firingDistance)
+                    {
+                        w.gotTarget = 1;
+                        w.firingTimer = 0;
+                        w.targetEntity = friendlyEntities[closestIndex];
+                    }
+                }
+            }
+            ).Schedule(friendlyTarget);
+
+        
+        enemyTarget.Complete();
+
+
+        enemyEntities_JobData.Dispose();
+        friendlyEntities.Dispose();
     }
+
 }
 

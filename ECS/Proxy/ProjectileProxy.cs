@@ -9,8 +9,10 @@ public struct Projectile : IComponentData
     [HideInInspector] public Entity dst;
     [HideInInspector] public bool placedInBuffer;
     [HideInInspector] public bool targetHit;
+    [HideInInspector] public Vector3 dstVec;
     public float speed;
     public float damage;
+    [HideInInspector] public bool markForDestroy;
 }
 
 public class ProjectileProxy : MonoBehaviour, IConvertGameObjectToEntity

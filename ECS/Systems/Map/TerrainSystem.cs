@@ -242,7 +242,7 @@ public class TerrainSystem : ComponentSystem
                     for (int k = 0; k < MainLoader.settings.Resource_Iron_Cluster_Nodes; k++)
                     {
                         var nextIndx = GenerateResourceCluster(indexes, TerrainSystem.tilesPerWidth);
-                        if (!indexes.Contains(nextIndx))
+                        if (!indexes.Contains(nextIndx) && nextIndx > 0)
                             indexes.Add(nextIndx);
                     }
 

@@ -199,7 +199,12 @@ public class FlightSystem : JobComponentSystem
             Translation pos = new Translation { Value = position };
             MainLoader.entityManager.SetComponentData(entity, pos);
             MainLoader.entityManager.SetComponentData(entity, new Rotation { Value = Quaternion.Euler(0, 0, 0) });
-            MainLoader.entityManager.AddBuffer<ProjectileBuffer>(entity);
+
+            SpaceShip s = MainLoader.entityManager.GetComponentData<SpaceShip>(entity);
+            s.dest = position;
+            MainLoader.entityManager.SetComponentData<SpaceShip>(entity, s);
+
+            //MainLoader.entityManager.AddBuffer<ProjectileBuffer>(entity);
         }
     }
 }
