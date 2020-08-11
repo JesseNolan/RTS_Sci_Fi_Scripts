@@ -130,16 +130,27 @@ public class ShootingSystem : SystemBase
 
         DestroyProjectiles.Complete();
 
+        NativeList<Vector3> deathLocations = new NativeList<Vector3>(Allocator.TempJob);
+
         var DestroyUnits = Entities
-            .ForEach((Entity entity, int entityInQueryIndex, in Target t) =>
+            .ForEach((Entity entity, int entityInQueryIndex, in Target t, in LocalToWorld l) =>
             {
                 if (t.health <= 0)
                 {
+                    deathLocations.Add(l.Position);
                     commandBuffer.DestroyEntity(entityInQueryIndex, entity);
                 }
             }).Schedule(ProcessHitsJob);
 
         DestroyUnits.Complete();
+
+
+        foreach (var d in deathLocations)
+        {
+            GameObject.Instantiate(GO_Spawner.Instance.explosion, d, Quaternion.identity);
+        }
+
+        deathLocations.Dispose();
 
 
         m_EntityCommandBufferSystem.AddJobHandleForProducer(ProcessHitsJob);
