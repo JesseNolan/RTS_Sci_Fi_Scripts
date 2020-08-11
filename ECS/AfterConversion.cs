@@ -20,7 +20,7 @@ public class AfterConversion : GameObjectConversionSystem
 
 
 
-            UISystem.SetupGameObjects();
+            //UISystem.SetupGameObjects();
 
             //TerrainSystem.SetupTerrain();
 
