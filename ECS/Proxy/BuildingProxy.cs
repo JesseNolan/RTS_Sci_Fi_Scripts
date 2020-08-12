@@ -7,6 +7,7 @@ using Unity.Mathematics;
 public struct Building : IComponentData
 {
     public float3 position;
+    public quaternion rotation;
     public int buildingID;
     public e_BuildingTypes buildingType;
     public System.UInt32 buildingTemplate;

@@ -130,6 +130,7 @@ public class BuildSystem : SystemBase
         var spawner = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
         var buildings = q_buildingQuery.ToComponentDataArray<Building>(Allocator.TempJob);
         var buildingEntities = q_buildingQuery.ToEntityArray(Allocator.TempJob);
+        var buildingLocations = q_buildingQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
 
         int tilesPerWidth = TerrainSystem.tilesPerWidth;
 
@@ -157,7 +158,7 @@ public class BuildSystem : SystemBase
 
 
         var finaliseBuildingJob = Entities
-            .ForEach((Entity entity, int entityInQueryIndex, ref PlacingBuilding p, ref Building building, ref Translation pos) =>
+            .ForEach((Entity entity, int entityInQueryIndex, ref PlacingBuilding p, ref Building building, in Translation pos, in Rotation r) =>
             {
                 GameState state = gameState[0];
 
@@ -179,6 +180,7 @@ public class BuildSystem : SystemBase
                         Building buildingToSet = building;
                         buildingToSet.position = selected[0].tileCoord;
                         buildingToSet.buildingID = state.buildingID_Incrementer;
+                        buildingToSet.rotation = r.Value;
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, buildingToSet);
 
                         SetTemplate(selected[0], tileMap, buildingToSet.buildingTemplate, tilesPerWidth, state);
@@ -201,6 +203,7 @@ public class BuildSystem : SystemBase
                         Building buildingToSet = building;
                         buildingToSet.position = selected[0].tileCoord;
                         buildingToSet.buildingID = state.buildingID_Incrementer;
+                        buildingToSet.rotation = r.Value;
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, buildingToSet);
 
                         SetTemplate(selected[0], tileMap, buildingToSet.buildingTemplate, tilesPerWidth, state);
@@ -228,7 +231,8 @@ public class BuildSystem : SystemBase
                 {
                     var entPrefab = GetBuildingPrefab(b, spawner[0]);
                     var newEnt = commandBuffer.Instantiate(entityInQueryIndex, entPrefab);
-                    commandBuffer.SetComponent(entityInQueryIndex, newEnt, pos);
+                    commandBuffer.SetComponent(entityInQueryIndex, newEnt, new Translation { Value = b.position });
+                    commandBuffer.SetComponent(entityInQueryIndex, newEnt, new Rotation { Value = b.rotation });
                     Building newBuilding = b;
                     commandBuffer.AddComponent(entityInQueryIndex, newEnt, b);
 
@@ -236,6 +240,7 @@ public class BuildSystem : SystemBase
                 }
             }).Schedule(finaliseBuildingJob);
 
+        NativeList<Vector3> deathLocations = new NativeList<Vector3>(Allocator.TempJob);
 
         var destroyBuildingJob = Entities
             .ForEach((Entity entity, int entityInQueryIndex, ref Destroy_Building d) =>
@@ -246,6 +251,8 @@ public class BuildSystem : SystemBase
                     {
                         if (buildings[i].buildingID == d.buildingID)
                         {
+                            deathLocations.Add(buildingLocations[i].Position);
+
                             commandBuffer.DestroyEntity(entityInQueryIndex, buildingEntities[i]);
                             commandBuffer.DestroyEntity(entityInQueryIndex, entity);
 
@@ -269,6 +276,13 @@ public class BuildSystem : SystemBase
         m_EntityCommandBufferSystem.AddJobHandleForProducer(destroyBuildingJob);
         destroyBuildingJob.Complete();
 
+        foreach (var d in deathLocations)
+        {
+            GameObject.Instantiate(GO_Spawner.Instance.largeExplosion, d, Quaternion.identity);
+        }
+
+        deathLocations.Dispose();
+
         if (newBuildingBuilt[0])
         {
             //LocalNavMeshBuilder.Instance.updateMeshes();
@@ -285,6 +299,7 @@ public class BuildSystem : SystemBase
         newBuildingBuilt.Dispose();
         buildings.Dispose();
         buildingEntities.Dispose();
+        buildingLocations.Dispose();
     }
 
     protected override void OnCreate()
@@ -297,7 +312,7 @@ public class BuildSystem : SystemBase
         m_BuildingTypesQuery = GetEntityQuery(typeof(BuildingTypeSpawner));
         m_tileMapGroup = GetEntityQuery(typeof(Tile));
         m_placingRoadQuery = GetEntityQuery(typeof(PreviewRoad));
-        q_buildingQuery = GetEntityQuery(typeof(Building));
+        q_buildingQuery = GetEntityQuery(typeof(Building), typeof(LocalToWorld));
     }
 
     public static void Spawn_Terran_Habitat()

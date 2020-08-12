@@ -21,6 +21,7 @@ public class GO_Spawner : MonoBehaviour
     }
 
     public GameObject explosion;
+    public GameObject largeExplosion;
 
 
 }
