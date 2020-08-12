@@ -12,16 +12,19 @@ public class TargettingSystem : SystemBase
 {
     EntityQuery m_enemyQuery;
     EntityQuery m_friendlyQuery;
+    EntityQuery m_constrainedQuery;
 
     protected override void OnCreate()
     {
         m_enemyQuery = GetEntityQuery(typeof(EnemyUnit), typeof(Translation));
         m_friendlyQuery = GetEntityQuery(typeof(FriendlyUnit), typeof(Translation));
+        m_constrainedQuery = GetEntityQuery(typeof(ConstrainedRotation));
     }
 
 
+
     protected override void OnUpdate()
-    {       
+    {
         var enemyEntities_JobData = m_enemyQuery.ToEntityArray(Allocator.TempJob);
         var friendlyEntities = m_friendlyQuery.ToEntityArray(Allocator.TempJob);
 
@@ -39,7 +42,13 @@ public class TargettingSystem : SystemBase
                     float mag = math.distance(fP.Position, position.Position);
                     //check to see if target is still within firing distance, if not, get new target
                     if (mag <= w.firingDistance)
-                        return;
+                    {
+                       
+                    }
+                    else
+                    {
+                        w.gotTarget = 0;
+                    }
                 }
                 else
                 {
@@ -80,6 +89,7 @@ public class TargettingSystem : SystemBase
             ).Schedule(Dependency);
 
         friendlyTarget.Complete();
+
 
         var enemyTarget = Entities
             .ForEach((Entity entity, int entityInQueryIndex, ref Weapon w, in EnemyUnit c0) =>
