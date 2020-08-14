@@ -133,7 +133,7 @@ public class ShootingSystem : SystemBase
         NativeList<Vector3> deathLocations = new NativeList<Vector3>(Allocator.TempJob);
 
         var DestroyUnits = Entities
-            .ForEach((Entity entity, int entityInQueryIndex, in Target t, in LocalToWorld l) =>
+            .ForEach((Entity entity, int entityInQueryIndex, in Target t, in LocalToWorld l, in SpaceShip s) =>
             {
                 if (t.health <= 0)
                 {

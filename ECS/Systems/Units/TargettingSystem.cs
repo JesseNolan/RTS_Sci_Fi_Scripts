@@ -16,8 +16,8 @@ public class TargettingSystem : SystemBase
 
     protected override void OnCreate()
     {
-        m_enemyQuery = GetEntityQuery(typeof(EnemyUnit), typeof(Translation));
-        m_friendlyQuery = GetEntityQuery(typeof(FriendlyUnit), typeof(Translation));
+        m_enemyQuery = GetEntityQuery(typeof(EnemyUnit));
+        m_friendlyQuery = GetEntityQuery(typeof(FriendlyUnit));
         m_constrainedQuery = GetEntityQuery(typeof(ConstrainedRotation));
     }
 
@@ -33,58 +33,61 @@ public class TargettingSystem : SystemBase
         var friendlyTarget = Entities
             .ForEach((Entity entity, int entityInQueryIndex, ref Weapon w, in FriendlyUnit c0) =>
             {
-                LocalToWorld fP = GetComponent<LocalToWorld>(entity);
-
-                if (HasComponent<Target>(w.targetEntity) && w.gotTarget == 1)
+                if (w.enabled)
                 {
-                    // if we currently have a target, check to see if it is still in range and return if true               
-                    LocalToWorld position = GetComponent<LocalToWorld>(w.targetEntity);
-                    float mag = math.distance(fP.Position, position.Position);
-                    //check to see if target is still within firing distance, if not, get new target
-                    if (mag <= w.firingDistance)
+                    LocalToWorld fP = GetComponent<LocalToWorld>(entity);
+
+                    if (HasComponent<Target>(w.targetEntity) && w.gotTarget == 1)
                     {
-                       
+                        // if we currently have a target, check to see if it is still in range and return if true               
+                        LocalToWorld position = GetComponent<LocalToWorld>(w.targetEntity);
+                        float mag = math.distance(fP.Position, position.Position);
+                        //check to see if target is still within firing distance, if not, get new target
+                        if (mag <= w.firingDistance)
+                        {
+
+                        }
+                        else
+                        {
+                            w.gotTarget = 0;
+                        }
                     }
                     else
                     {
                         w.gotTarget = 0;
-                    }
-                }
-                else
-                {
-                    w.gotTarget = 0;
 
-                    float closest = Mathf.Infinity;
-                    int closestIndex = 0;
+                        float closest = Mathf.Infinity;
+                        int closestIndex = 0;
 
-                    for (int i = 0; i < enemyEntities_JobData.Length; i++)
-                    {
-                        LocalToWorld enemyPosition = GetComponent<LocalToWorld>(enemyEntities_JobData[i]);
-                        float mag = math.distance(fP.Position, enemyPosition.Position);
-
-                        // find the closest enemy
-                        if (closest < 0)
+                        for (int i = 0; i < enemyEntities_JobData.Length; i++)
                         {
-                            closest = mag;
-                            closestIndex = i;
-                        }
-                        else
-                        {
-                            if (closest > mag)
+                            LocalToWorld enemyPosition = GetComponent<LocalToWorld>(enemyEntities_JobData[i]);
+                            float mag = math.distance(fP.Position, enemyPosition.Position);
+
+                            // find the closest enemy
+                            if (closest < 0)
                             {
                                 closest = mag;
                                 closestIndex = i;
                             }
+                            else
+                            {
+                                if (closest > mag)
+                                {
+                                    closest = mag;
+                                    closestIndex = i;
+                                }
+                            }
+                        }
+
+                        if (closest <= w.firingDistance)
+                        {
+                            w.gotTarget = 1;
+                            w.firingTimer = 0;
+                            w.targetEntity = enemyEntities_JobData[closestIndex];
                         }
                     }
-
-                    if (closest <= w.firingDistance)
-                    {
-                        w.gotTarget = 1;
-                        w.firingTimer = 0;
-                        w.targetEntity = enemyEntities_JobData[closestIndex];
-                    }
-                }
+                }           
             }
             ).Schedule(Dependency);
 
@@ -94,50 +97,53 @@ public class TargettingSystem : SystemBase
         var enemyTarget = Entities
             .ForEach((Entity entity, int entityInQueryIndex, ref Weapon w, in EnemyUnit c0) =>
             {
-                LocalToWorld fP = GetComponent<LocalToWorld>(entity);
-
-                if (HasComponent<Target>(w.targetEntity) && w.gotTarget == 1)
+                if (w.enabled)
                 {
-                    // if we currently have a target, check to see if it is still in range and return if true               
-                    LocalToWorld position = GetComponent<LocalToWorld>(w.targetEntity);
-                    float mag = math.distance(fP.Position, position.Position);
-                    //check to see if target is still within firing distance, if not, get new target
-                    if (mag <= w.firingDistance)
-                        return;
-                }
-                else
-                {
-                    w.gotTarget = 0;
+                    LocalToWorld fP = GetComponent<LocalToWorld>(entity);
 
-                    float closest = Mathf.Infinity;
-                    int closestIndex = 0;
-
-                    for (int i = 0; i < friendlyEntities.Length; i++)
+                    if (HasComponent<Target>(w.targetEntity) && w.gotTarget == 1)
                     {
-                        LocalToWorld friendlyPosition = GetComponent<LocalToWorld>(friendlyEntities[i]);
-                        float mag = math.distance(fP.Position, friendlyPosition.Position);
+                        // if we currently have a target, check to see if it is still in range and return if true               
+                        LocalToWorld position = GetComponent<LocalToWorld>(w.targetEntity);
+                        float mag = math.distance(fP.Position, position.Position);
+                        //check to see if target is still within firing distance, if not, get new target
+                        if (mag <= w.firingDistance)
+                            return;
+                    }
+                    else
+                    {
+                        w.gotTarget = 0;
 
-                        // find the closest enemy
-                        if (closest < 0)
+                        float closest = Mathf.Infinity;
+                        int closestIndex = 0;
+
+                        for (int i = 0; i < friendlyEntities.Length; i++)
                         {
-                            closest = mag;
-                            closestIndex = i;
-                        }
-                        else
-                        {
-                            if (closest > mag)
+                            LocalToWorld friendlyPosition = GetComponent<LocalToWorld>(friendlyEntities[i]);
+                            float mag = math.distance(fP.Position, friendlyPosition.Position);
+
+                            // find the closest enemy
+                            if (closest < 0)
                             {
                                 closest = mag;
                                 closestIndex = i;
                             }
+                            else
+                            {
+                                if (closest > mag)
+                                {
+                                    closest = mag;
+                                    closestIndex = i;
+                                }
+                            }
                         }
-                    }
 
-                    if (closest <= w.firingDistance)
-                    {
-                        w.gotTarget = 1;
-                        w.firingTimer = 0;
-                        w.targetEntity = friendlyEntities[closestIndex];
+                        if (closest <= w.firingDistance)
+                        {
+                            w.gotTarget = 1;
+                            w.firingTimer = 0;
+                            w.targetEntity = friendlyEntities[closestIndex];
+                        }
                     }
                 }
             }

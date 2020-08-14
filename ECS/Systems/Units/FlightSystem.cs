@@ -204,6 +204,10 @@ public class FlightSystem : JobComponentSystem
             s.dest = position;
             MainLoader.entityManager.SetComponentData<SpaceShip>(entity, s);
 
+            Weapon w = MainLoader.entityManager.GetComponentData<Weapon>(entity);
+            w.enabled = true;
+            MainLoader.entityManager.SetComponentData<Weapon>(entity, w);
+
             //MainLoader.entityManager.AddBuffer<ProjectileBuffer>(entity);
         }
     }

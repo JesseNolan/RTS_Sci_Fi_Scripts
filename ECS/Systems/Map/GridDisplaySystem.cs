@@ -10,109 +10,94 @@ using Unity.Jobs;
 
 [UpdateAfter(typeof(TileSelectionSystem))]
 [UpdateAfter(typeof(MapUpdaterSystem))]
-public class GridDisplaySystem : JobComponentSystem
+public class GridDisplaySystem : SystemBase
 {
-    EndSimulationEntityCommandBufferSystem m_EntityCommandBufferSystem;
+    BeginSimulationEntityCommandBufferSystem m_EntityCommandBufferSystem;
 
     EntityQuery m_selectedTile;
     EntityQuery m_tileMapGroup;
     EntityQuery m_highlightSpawner;
     EntityQuery m_gameStateGroup;
+    EntityQuery m_placingBuilding;
 
-    public struct GridHighlightSpawn : IJobForEachWithEntity<Tile>
+
+    protected override void OnUpdate()
     {
-        public EntityCommandBuffer.ParallelWriter CommandBuffer;
-        [ReadOnly] public GameState gameState;
-        [ReadOnly] public float3 selectedCoord;
-        [ReadOnly] public float gridHighlightDisplayDistance;
-        [ReadOnly, DeallocateOnJobCompletion] public NativeArray<GridHighlightSpawner> tilePreviewSpawner;
+        var commandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter();
+        var selectedTile = m_selectedTile.ToComponentDataArray<SelectedTile>(Allocator.TempJob);
+        var gameState = m_gameStateGroup.ToComponentDataArray<GameState>(Allocator.TempJob);
+        var spawner = m_highlightSpawner.ToComponentDataArray<GridHighlightSpawner>(Allocator.TempJob);
+        var tileMap = m_tileMapGroup.ToComponentDataArray<Tile>(Allocator.TempJob);
 
-        public void Execute(Entity entity, int Index, ref Tile t)
-        {
-            if ((gameState.gameState == e_GameStates.state_BuildingPlacement) || (gameState.gameState == e_GameStates.state_RoadPlacement))
+        var placingBuilding = m_placingBuilding.ToComponentDataArray<Building>(Allocator.TempJob);
+
+        float gridHighlightDisplayDistance = Settings.Instance.gridHighlightDisplayDistance;
+
+        var highlightJob = Entities
+            .ForEach((Entity entity, int entityInQueryIndex, ref Tile t) =>
             {
-                if ((math.distance(t.tileCoord, selectedCoord) < gridHighlightDisplayDistance) && (t.isValid == 1))
+                if ((gameState[0].gameState == e_GameStates.state_BuildingPlacement) || (gameState[0].gameState == e_GameStates.state_RoadPlacement))
                 {
-                    if (t.highlighted == 0)
+                    if ((math.distance(t.tileCoord, selectedTile[0].tileCoord) < gridHighlightDisplayDistance) && (t.isValid == 1))
                     {
-                        Entity instance = CommandBuffer.Instantiate(Index, tilePreviewSpawner[0].Prefab);
-                        GridTileHighlight g = new GridTileHighlight { tileIndex = t.tileID };
-                        CommandBuffer.SetComponent(Index, instance, g);
-                        Translation tr = new Translation { Value = new float3(t.tileCoord) };
-                        CommandBuffer.SetComponent(Index, instance, tr);
-                        t.highlighted = 1;
+
+                        for (int i = 0; i < placingBuilding.Length; i++)
+                        {
+                            
+                            // check if current tile falls within this template
+
+                        }
+
+
+                        if (t.highlighted == 0)
+                        {
+                            Entity instance = commandBuffer.Instantiate(entityInQueryIndex, spawner[0].Prefab);
+                            GridTileHighlight g = new GridTileHighlight { tileIndex = t.tileID };
+                            commandBuffer.SetComponent(entityInQueryIndex, instance, g);
+                            Translation tr = new Translation { Value = new float3(t.tileCoord) };
+                            commandBuffer.SetComponent(entityInQueryIndex, instance, tr);
+                            t.highlighted = 1;
+                        }
+                    }
+                    else
+                    {
+                        t.highlighted = 0;
                     }
                 }
                 else
                 {
                     t.highlighted = 0;
                 }
-            } else
-            {
-                t.highlighted = 0;
-            }
-        }
-    }
+            }).Schedule(Dependency);
 
-    public struct GridHighlightDestroy : IJobForEachWithEntity<GridTileHighlight, Translation>
-    {
-        public EntityCommandBuffer.ParallelWriter CommandBuffer;
-        [ReadOnly] public GameState gameState;
-        [ReadOnly] public float3 selectedCoord;
-        [ReadOnly] public float gridHighlightDisplayDistance;
-        [ReadOnly, DeallocateOnJobCompletion] public NativeArray<Tile> tileMap;
+        m_EntityCommandBufferSystem.AddJobHandleForProducer(highlightJob);
 
-        public void Execute(Entity entity, int Index, ref GridTileHighlight g, ref Translation t)
-        {
-            if ((gameState.gameState == e_GameStates.state_BuildingPlacement) || (gameState.gameState == e_GameStates.state_RoadPlacement))
+        var destroyHighlightJob = Entities
+            .ForEach((Entity entity, int entityInQueryIndex, ref GridTileHighlight g, ref Translation t) =>
             {
-                if ((math.distance(t.Value, selectedCoord) >= gridHighlightDisplayDistance) || (tileMap[g.tileIndex].isValid == 0))
+                if ((gameState[0].gameState == e_GameStates.state_BuildingPlacement) || (gameState[0].gameState == e_GameStates.state_RoadPlacement))
                 {
-                    CommandBuffer.DestroyEntity(Index, entity);
+                    if ((math.distance(t.Value, selectedTile[0].tileCoord) >= gridHighlightDisplayDistance) || (tileMap[g.tileIndex].isValid == 0))
+                    {
+                        commandBuffer.DestroyEntity(entityInQueryIndex, entity);
+                    }
                 }
-            } else
-            {
-                CommandBuffer.DestroyEntity(Index, entity);
-            }
-           
-        }
-    }
+                else
+                {
+                    commandBuffer.DestroyEntity(entityInQueryIndex, entity);
+                }
+            }).Schedule(highlightJob);
 
+        m_EntityCommandBufferSystem.AddJobHandleForProducer(destroyHighlightJob);
 
-    protected override JobHandle OnUpdate(JobHandle inputDeps)
-    {
-        var selectedTile = m_selectedTile.ToComponentDataArray<SelectedTile>(Allocator.TempJob);
-        var gameState = m_gameStateGroup.ToComponentDataArray<GameState>(Allocator.TempJob);
-        var spawner = m_highlightSpawner.ToComponentDataArray<GridHighlightSpawner>(Allocator.TempJob);
-        var tileMap = m_tileMapGroup.ToComponentDataArray<Tile>(Allocator.TempJob);
-        float3 coord = selectedTile[0].tileCoord;
-
-        var gridSpawnJob = new GridHighlightSpawn
-        {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
-            gameState = gameState[0],
-            selectedCoord = coord,
-            gridHighlightDisplayDistance = Settings.Instance.gridHighlightDisplayDistance,
-            tilePreviewSpawner = spawner,
-
-        }.Schedule(this, inputDeps);
-
-        var gridDestroyJob = new GridHighlightDestroy
-        {
-            CommandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter(),
-            gameState = gameState[0],
-            selectedCoord = coord,
-            gridHighlightDisplayDistance = Settings.Instance.gridHighlightDisplayDistance,
-            tileMap = tileMap,
-        }.Schedule(this, gridSpawnJob);
-
-        m_EntityCommandBufferSystem.AddJobHandleForProducer(gridSpawnJob);
-        m_EntityCommandBufferSystem.AddJobHandleForProducer(gridDestroyJob);
+        destroyHighlightJob.Complete();
 
         selectedTile.Dispose();
         gameState.Dispose();
+        spawner.Dispose();
+        tileMap.Dispose();
+        placingBuilding.Dispose();
 
-        return gridDestroyJob;
     }
 
 
@@ -121,8 +106,8 @@ public class GridDisplaySystem : JobComponentSystem
         m_selectedTile = GetEntityQuery(typeof(SelectedTile));
         m_tileMapGroup = GetEntityQuery(typeof(Tile));
         m_highlightSpawner = GetEntityQuery(typeof(GridHighlightSpawner));
-        m_EntityCommandBufferSystem = World.DefaultGameObjectInjectionWorld.GetOrCreateSystem<EndSimulationEntityCommandBufferSystem>();
-     
+        m_EntityCommandBufferSystem = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
         m_gameStateGroup = GetEntityQuery(typeof(GameState));
+        m_placingBuilding = GetEntityQuery(typeof(PlacingBuilding), typeof(Building));
     }
 }

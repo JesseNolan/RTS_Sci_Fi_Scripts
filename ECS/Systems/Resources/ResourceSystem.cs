@@ -22,21 +22,6 @@ public class ResourceSystem : JobComponentSystem
     }
 
 
-    public struct RemoveEmptyResources : IJobForEachWithEntity<Resource>
-    {
-        public EntityCommandBuffer.ParallelWriter CommandBuffer;
-
-        public void Execute(Entity entity, int index, ref Resource r)
-        {
-            if (r.resourceAmount <= 0)
-            {
-
-
-                CommandBuffer.DestroyEntity(index, entity);
-            }
-        }
-    }
-
     bool initialSpawn = false;
 
     protected override JobHandle OnUpdate(JobHandle inputDeps)

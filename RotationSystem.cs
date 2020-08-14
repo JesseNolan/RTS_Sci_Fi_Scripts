@@ -68,7 +68,10 @@ public class RotationSystem : SystemBase
                    Weapon w = GetComponent<Weapon>(nextEnt);
                    if (w.gotTarget == 1)
                    {
-                       c.track = GetComponent<LocalToWorld>(w.targetEntity).Position;
+                       if (HasComponent<LocalToWorld>(w.targetEntity))
+                       {
+                           c.track = GetComponent<LocalToWorld>(w.targetEntity).Position;
+                       }
                    }
                }
 

@@ -68,52 +68,96 @@ public class BuildSystem : SystemBase
         }
     }
 
-    private static bool CheckTemplateValid(SelectedTile selected, NativeArray<Tile> tileMap, System.UInt32 template, int tilesPerWidth)
+    // Templates are done as (x1,y1), (x2,y2) style with the bounding box being defined by diagonal corners.
+    private static bool CheckTemplateValid(SelectedTile selected, NativeArray<Tile> tileMap, float2x2 template, int tilesPerWidth)
     {
-        int anchor = selected.tileID + (2 * tilesPerWidth) - 2;
-        // template is 5x5 = 25
-        for (int i = 0; i < 5; i++)
-        {
-            for (int j = 0; j < 5; j++)
-            {
-                uint t = (template >> (i * 5 + j)) & 1U;
-                int test = anchor - (i * tilesPerWidth) + j;
+        int x1 = (int)template.c0.x;
+        int y1 = (int)template.c0.y;
+        int x2 = (int)template.c1.x;
+        int y2 = (int)template.c1.y;
 
-                if (test > 0)
+        bool evenX = (x2 - x1 + 1) % 2 == 0 ? true : false;
+        bool evenY = (y2 - y1 + 1) % 2 == 0 ? true : false;
+
+        int tileAnchorX;
+        int tileAnchorY;
+
+        if (evenX)
+            tileAnchorX = ((x2 - x1 + 1) / 2) - 1;
+        else
+            tileAnchorX = ((x2 - x1 + 1) / 2);
+
+        if (evenY)
+            tileAnchorY = ((y2 - y1 + 1) / 2) - 1;
+        else
+            tileAnchorY = ((y2 - y1 + 1) / 2);
+
+        // get the start index (0,0) position removing the offset of the tile anchor
+        int startIndex = selected.tileID - (tileAnchorY * tilesPerWidth) - tileAnchorX;
+
+        for (int x = 0; x < (x2 - x1 + 1); x++)
+        {
+            for (int y = 0; y < (y2 - y1 + 1); y++)
+            {
+                int currentIndex = startIndex + (y * tilesPerWidth) + x;
+
+                if (currentIndex > 0)
                 {
-                    Tile testTile = tileMap[test];
-                    if (t > 0)
-                        if (testTile.isValid == 0)
-                            return false;
+                    Tile testTile = tileMap[currentIndex];
+                    if (testTile.isValid == 0)
+                        return false;
                 }
                 else
                 {
                     return false;
                 }
+
             }
         }
+
         return true;
     }
 
-    // For a building's template and a selected tile, this sets up the respective tiles the building has been built on
-    private static void SetTemplate(SelectedTile selected, NativeArray<Tile> tileMap, System.UInt32 template, int tilesPerWidth, GameState state)
+    private static void SetTemplate(SelectedTile selected, NativeArray<Tile> tileMap, float2x2 template, int tilesPerWidth, GameState state)
     {
-        int anchor = selected.tileID + (2 * tilesPerWidth) - 2;
+        int x1 = (int)template.c0.x;
+        int y1 = (int)template.c0.y;
+        int x2 = (int)template.c1.x;
+        int y2 = (int)template.c1.y;
+
+        bool evenX = (x2 - x1 + 1) % 2 == 0 ? true : false;
+        bool evenY = (y2 - y1 + 1) % 2 == 0 ? true : false;
+
+        int tileAnchorX;
+        int tileAnchorY;
+
+        if (evenX)
+            tileAnchorX = ((x2 - x1 + 1) / 2) - 1;
+        else
+            tileAnchorX = ((x2 - x1 + 1) / 2);
+
+        if (evenY)
+            tileAnchorY = ((y2 - y1 + 1) / 2) - 1;
+        else
+            tileAnchorY = ((y2 - y1 + 1) / 2);
+
+        // get the start index (0,0) position removing the offset of the tile anchor
+        int startIndex = selected.tileID - (tileAnchorY * tilesPerWidth) - tileAnchorX;
+
         int buildingID = state.buildingID_Incrementer;
-        for (int i = 0; i < 5; i++)
+        for (int x = 0; x < (x2 - x1 + 1); x++)
         {
-            for (int j = 0; j < 5; j++)
+            for (int y = 0; y < (y2 - y1 + 1); y++)
             {
-                uint t = (template >> (i * 5 + j)) & 1U;
-                int test = anchor - (i * tilesPerWidth) + j;
-                if (t > 0)
+                int currentIndex = startIndex + (y * tilesPerWidth) + x;
+                if (currentIndex > 0)
                 {
-                    Tile tile = tileMap[test];
+                    Tile tile = tileMap[currentIndex];
                     tile.isValid = 0;
                     tile.hasRoad = true;
                     tile.hasBuilding = true;
                     tile.buildingID = buildingID;
-                    tileMap[test] = tile;
+                    tileMap[currentIndex] = tile;
                 }
             }
         }
@@ -162,11 +206,10 @@ public class BuildSystem : SystemBase
             {
                 GameState state = gameState[0];
 
-                if (CheckTemplateValid(selected[0], tileMap, building.buildingTemplate, tilesPerWidth))
+                if (CheckTemplateValid(selected[0], tileMap, building.templateCoords, tilesPerWidth))
                 {
                     if ((input[0].MouseButtonUp0) && input[0].shift)
                     {
-                        Debug.Log("Building Shift");
                         newBuildingBuilt[0] = true;
 
                         var constructionEntity = GetBuildingConstructionPrefab(building, spawner[0]);
@@ -183,13 +226,18 @@ public class BuildSystem : SystemBase
                         buildingToSet.rotation = r.Value;
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, buildingToSet);
 
-                        SetTemplate(selected[0], tileMap, buildingToSet.buildingTemplate, tilesPerWidth, state);
+                        // if the building has a weapon, add the component to the construction entity
+                        if (HasComponent<Weapon>(entity))
+                        {
+                            commandBuffer.AddComponent<Weapon>(entityInQueryIndex, newEnt, GetComponent<Weapon>(entity));
+                        }
+
+                        SetTemplate(selected[0], tileMap, buildingToSet.templateCoords, tilesPerWidth, state);
                         state.buildingID_Incrementer++;
                         gameState[0] = state;
                     }
                     else if (input[0].MouseButtonUp0)
                     {
-                        Debug.Log("Building");
                         newBuildingBuilt[0] = true;
 
                         var constructionEntity = GetBuildingConstructionPrefab(building, spawner[0]);
@@ -206,7 +254,13 @@ public class BuildSystem : SystemBase
                         buildingToSet.rotation = r.Value;
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, buildingToSet);
 
-                        SetTemplate(selected[0], tileMap, buildingToSet.buildingTemplate, tilesPerWidth, state);
+                        // if the building has a weapon, add the component to the construction entity
+                        if (HasComponent<Weapon>(entity))
+                        {
+                            commandBuffer.AddComponent<Weapon>(entityInQueryIndex, newEnt, GetComponent<Weapon>(entity));
+                        }
+
+                        SetTemplate(selected[0], tileMap, buildingToSet.templateCoords, tilesPerWidth, state);
                         state.buildingID_Incrementer++;
                         state.gameState = e_GameStates.state_Idle;
                         gameState[0] = state;
@@ -229,12 +283,46 @@ public class BuildSystem : SystemBase
             {
                 if (timer.timerValue <= 0)
                 {
+                    // get the building prefab and instantiate it
                     var entPrefab = GetBuildingPrefab(b, spawner[0]);
                     var newEnt = commandBuffer.Instantiate(entityInQueryIndex, entPrefab);
+
+                    // set the buildings position and rotation
                     commandBuffer.SetComponent(entityInQueryIndex, newEnt, new Translation { Value = b.position });
                     commandBuffer.SetComponent(entityInQueryIndex, newEnt, new Rotation { Value = b.rotation });
+
+                    // Add the Building component to it
                     Building newBuilding = b;
                     commandBuffer.AddComponent(entityInQueryIndex, newEnt, b);
+
+                    // Add the Friendly component to it
+                    commandBuffer.AddComponent<FriendlyUnit>(entityInQueryIndex, newEnt);
+
+                    // If it has a weapon, enable the weapon and add it to the building
+                    if (HasComponent<Weapon>(entity))
+                    {
+                        Weapon w = GetComponent<Weapon>(entity);
+                        w.enabled = true;
+                        commandBuffer.AddComponent<Weapon>(entityInQueryIndex, newEnt, w);
+                    }
+
+                    // Add the target component to the new prefab and copy across its health
+                    Target t;
+                    t.health = b.startingHealth;
+                    commandBuffer.AddComponent<Target>(entityInQueryIndex, newEnt, t);
+
+                    // If the building has a gatherable resource add the ResourceGatherBuilding component to the building
+                    if (b.gatherableType != e_ResourceTypes.NoResource)
+                    {
+                        ResourceGatherBuilding r;
+                        r.gatherableType = b.gatherableType;
+                        r.gatherAmount = b.gatherAmount;
+                        r.tileRadius = b.tileRadius;
+                        commandBuffer.AddComponent<ResourceGatherBuilding>(entityInQueryIndex, newEnt, r);
+                        CountdownTimer countdown = new CountdownTimer { timerLength_secs = 5, timerValue = 0 };   // 5 second intervals
+                        commandBuffer.AddComponent<CountdownTimer>(entityInQueryIndex, newEnt, countdown);
+                    }
+
 
                     commandBuffer.DestroyEntity(entityInQueryIndex, entity);
                 }
@@ -242,6 +330,20 @@ public class BuildSystem : SystemBase
 
         NativeList<Vector3> deathLocations = new NativeList<Vector3>(Allocator.TempJob);
 
+        // Loop over all buildings with a target, if that target is 0, mark it for destruction.
+        var MarkForDestroy = Entities
+            .ForEach((Entity entity, int entityInQueryIndex, in Target t, in LocalToWorld l, in Building s) =>
+            {
+                if (t.health <= 0)
+                {
+                    Destroy_Building d;
+                    d.triggerDestroy = true;
+                    d.buildingID = s.buildingID;
+                    commandBuffer.AddComponent<Destroy_Building>(entityInQueryIndex, entity, d);
+                }
+            }).Schedule(completeBuildingJob);
+
+        // This job destroys buildings that have been marked (usually from the UI)
         var destroyBuildingJob = Entities
             .ForEach((Entity entity, int entityInQueryIndex, ref Destroy_Building d) =>
             {
@@ -271,7 +373,7 @@ public class BuildSystem : SystemBase
                         }
                     }
                 }
-            }).Schedule(completeBuildingJob);
+            }).Schedule(MarkForDestroy);
 
         m_EntityCommandBufferSystem.AddJobHandleForProducer(destroyBuildingJob);
         destroyBuildingJob.Complete();
@@ -318,60 +420,42 @@ public class BuildSystem : SystemBase
     public static void Spawn_Terran_Habitat()
     {
         var s = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
-        GenericSpawner(s[0].Terran_Habitat, s[0].Terran_Habitat_Template, e_BuildingTypes.Terran_Habitat);
+        GenericSpawner(s[0].Terran_Habitat);
         s.Dispose();
     }
 
     public static void Spawn_Terran_House()
     {
         var s = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
-        GenericSpawner(s[0].Terran_House, s[0].Terran_House_Template, e_BuildingTypes.Terran_House);
+        GenericSpawner(s[0].Terran_House);
         s.Dispose();
     }
 
     public static void Spawn_Terran_ResidentBlock()
     {
         var s = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
-        var ent = GenericSpawner(s[0].Terran_ResidentBlock, s[0].Terran_ResidentBlock_Template, e_BuildingTypes.Terran_Resident_Block);
-        ResourceGatherBuilding r = new ResourceGatherBuilding
-        {
-            tileRadius = 2,
-            gatherableType = e_ResourceTypes.Rock,
-            gatherAmount = 10,
-        };
-        MainLoader.entityManager.AddComponentData(ent, r);
-        CountdownTimer c = new CountdownTimer { timerLength_secs = 5, timerValue = 0 };   // 5 second intervals
-        MainLoader.entityManager.AddComponentData(ent, c);
+        var ent = GenericSpawner(s[0].Terran_ResidentBlock);
         s.Dispose();
     }
 
     public static void Spawn_Terran_EnergySphere()
     {
         var s = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
-        var ent = GenericSpawner(s[0].Terran_EnergySphere, s[0].Terran_EnergySphere_Template, e_BuildingTypes.Terran_Energy_Sphere);
-        ResourceGatherBuilding r = new ResourceGatherBuilding
-        {
-            tileRadius = 3,
-            gatherableType = e_ResourceTypes.Iron,
-            gatherAmount = 10,
-        };
-        MainLoader.entityManager.AddComponentData(ent, r);
-        CountdownTimer c = new CountdownTimer { timerLength_secs = 5, timerValue = 0 };   // 5 second intervals
-        MainLoader.entityManager.AddComponentData(ent, c);
+        var ent = GenericSpawner(s[0].Terran_EnergySphere);
         s.Dispose();
     }
 
     public static void Spawn_Terran_AquaStore()
     {
         var s = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
-        GenericSpawner(s[0].Terran_AquaStore, s[0].Terran_AquaStore_Template, e_BuildingTypes.Terran_Aqua_Store);
+        GenericSpawner(s[0].Terran_AquaStore);
         s.Dispose();
     }
 
     public static void Spawn_Terran_PlasmaCannon()
     {
         var s = m_BuildingTypesQuery.ToComponentDataArray<BuildingTypeSpawner>(Allocator.TempJob);
-        GenericSpawner(s[0].Terran_PlasmaCannon, s[0].Terran_PlasmaCannon_Template, e_BuildingTypes.Terran_Plasma_Cannon);
+        GenericSpawner(s[0].Terran_PlasmaCannon);
         s.Dispose();
     }
 
@@ -383,7 +467,7 @@ public class BuildSystem : SystemBase
 
     }
 
-    private static Entity GenericSpawner(Entity prefab, System.UInt32 template, e_BuildingTypes type)
+    private static Entity GenericSpawner(Entity prefab)
     {
         Debug.Log("Generic Spawner");
         var gameState = m_gameStateGroup.ToComponentDataArray<GameState>(Allocator.TempJob);
@@ -399,8 +483,6 @@ public class BuildSystem : SystemBase
         MainLoader.entityManager.SetComponentData(entity, pos);
         MainLoader.entityManager.AddComponent(entity, typeof(PlacingBuilding));
         MainLoader.entityManager.SetComponentData(entity, new Rotation { Value = Quaternion.Euler(0, 0, 0) });
-        Building b = new Building { buildingType = type, buildingTemplate = template };
-        MainLoader.entityManager.AddComponentData(entity, b);
 
         gameStateEntity.Dispose();
         gameState.Dispose();
@@ -435,7 +517,7 @@ public class BuildSystem : SystemBase
 
 public struct ConstructingBuilding : IComponentData
 {
-    public int poo;
+    public bool dontuse;
 }
 
 

@@ -15,6 +15,7 @@ public class WeaponProxy : MonoBehaviour, IConvertGameObjectToEntity
     {
         var data = new Weapon
         {
+            enabled = false,
             firingDistance = firingDistance,
             firingRate = firingRate,
             projectileSpeed = projectileSpeed,
@@ -27,11 +28,13 @@ public class WeaponProxy : MonoBehaviour, IConvertGameObjectToEntity
 
 public struct Weapon : IComponentData
 {
-    [HideInInspector] public Entity targetEntity;
-    [HideInInspector] public int gotTarget;
-    [HideInInspector] public int firingTimer;
+    public Entity targetEntity;
+    public bool enabled;
+    public int gotTarget;
+    public int firingTimer;
     public int firingRate;  // number of ticks between firing
     public float firingDistance;
     public float projectileSpeed;
     public float damage;
+    
 }

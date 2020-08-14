@@ -36,14 +36,14 @@ public class SelectionSystem : SystemBase
             if (selected[0] != previouslySelected)
             {
                 if (EntityManager.Exists(previouslySelected))
-                    DisableSelection(previouslySelected);
-                EnableSelection(selected[0]);
+                    DisableSelectionReentrant(previouslySelected);
+                EnableSelectionReentrant(selected[0]);
                 previouslySelected = selected[0];
             }
         } else
         {
             if (EntityManager.Exists(previouslySelected))
-                DisableSelection(previouslySelected);
+                DisableSelectionReentrant(previouslySelected);
             previouslySelected = Entity.Null;
         }
 
@@ -62,40 +62,54 @@ public class SelectionSystem : SystemBase
     }
 
 
-
-    private void EnableSelection(Entity entity)
+    private void EnableFresnel(Entity entity)
     {
-        DynamicBuffer<Child> children = GetBuffer<Child>(entity);
-
-        foreach (var c in children)
+        if (HasComponent<SelectedFresnel>(entity))
         {
-            if (HasComponent<SelectedFresnel>(c.Value))
-            {
-                SelectedFresnel sf;
-                sf.Value = 1.0f;
-                EntityManager.SetComponentData<SelectedFresnel>(c.Value, sf);
-            }
+            SelectedFresnel sf;
+            sf.Value = 1.0f;
+            EntityManager.SetComponentData<SelectedFresnel>(entity, sf);
         }
     }
 
 
-    private void DisableSelection(Entity entity)
+    private void DisableFresnel(Entity entity)
     {
-        DynamicBuffer<Child> children = GetBuffer<Child>(entity);
-
-        foreach (var c in children)
+        if (HasComponent<SelectedFresnel>(entity))
         {
-            if (HasComponent<SelectedFresnel>(c.Value))
+            SelectedFresnel sf;
+            sf.Value = 0.0f;
+            EntityManager.SetComponentData<SelectedFresnel>(entity, sf);
+        }
+    }
+
+    private void EnableSelectionReentrant(Entity entity)
+    {
+        BufferFromEntity<Child> cb = GetBufferFromEntity<Child>();
+        if (cb.HasComponent(entity))
+        {
+            DynamicBuffer<Child> children = GetBuffer<Child>(entity);
+            foreach (var c in children)
             {
-                SelectedFresnel sf;
-                sf.Value = 0f;
-                EntityManager.SetComponentData<SelectedFresnel>(c.Value, sf);
+                EnableFresnel(c.Value);
+                EnableSelectionReentrant(c.Value);
             }
         }
     }
 
-
-
+    private void DisableSelectionReentrant(Entity entity)
+    {
+        BufferFromEntity<Child> cb = GetBufferFromEntity<Child>();
+        if (cb.HasComponent(entity))
+        {
+            DynamicBuffer<Child> children = GetBuffer<Child>(entity);
+            foreach (var c in children)
+            {
+                DisableFresnel(c.Value);
+                DisableSelectionReentrant(c.Value);
+            }
+        }
+    }
 }
 
 public struct Selected : IComponentData
