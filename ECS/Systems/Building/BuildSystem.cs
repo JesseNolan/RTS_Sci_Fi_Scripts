@@ -164,6 +164,23 @@ public class BuildSystem : SystemBase
     }
 
 
+    private static float3 CalculateBuildingOffset(SelectedTile selected, float2x2 template, int tileWidth)
+    {
+        int x1 = (int)template.c0.x;
+        int y1 = (int)template.c0.y;
+        int x2 = (int)template.c1.x;
+        int y2 = (int)template.c1.y;
+
+        float3 offset;
+
+        offset.x = (x2 - x1 + 1) % 2 == 0 ? (float)tileWidth / 2.0f : 0;
+        offset.z = (y2 - y1 + 1) % 2 == 0 ? (float)tileWidth / 2.0f : 0;
+        offset.y = 0;
+
+        return offset;
+    }
+
+
     protected override void OnUpdate()
     {
         var commandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter();
@@ -177,13 +194,14 @@ public class BuildSystem : SystemBase
         var buildingLocations = q_buildingQuery.ToComponentDataArray<LocalToWorld>(Allocator.TempJob);
 
         int tilesPerWidth = TerrainSystem.tilesPerWidth;
+        int tileWidth = TerrainSystem.tileWidth;
 
         bool[] bArr = new bool[1];
         NativeArray<bool> newBuildingBuilt = new NativeArray<bool>(bArr, Allocator.TempJob);
 
 
         var moveBuildingJob = Entities
-            .ForEach((Entity entity, int entityInQueryIndex, ref PlacingBuilding p, ref Translation t, ref Rotation r) =>
+            .ForEach((Entity entity, int entityInQueryIndex, ref PlacingBuilding p, ref Translation t, ref Rotation r, in Building b) =>
             {
                 if (input[0].rotateLeft)
                 {
@@ -197,7 +215,10 @@ public class BuildSystem : SystemBase
                     Quaternion r1 = prev * Quaternion.Euler(0, -90, 0);
                     r.Value = r1;
                 }
-                t.Value = selected[0].tileCoord;
+
+                float3 offset = CalculateBuildingOffset(selected[0], b.templateCoords, tileWidth);
+
+                t.Value = selected[0].tileCoord + offset;
             }).Schedule(Dependency);
 
 
@@ -221,7 +242,7 @@ public class BuildSystem : SystemBase
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, c);
 
                         Building buildingToSet = building;
-                        buildingToSet.position = selected[0].tileCoord;
+                        buildingToSet.position = pos.Value;
                         buildingToSet.buildingID = state.buildingID_Incrementer;
                         buildingToSet.rotation = r.Value;
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, buildingToSet);
@@ -249,7 +270,7 @@ public class BuildSystem : SystemBase
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, c);
 
                         Building buildingToSet = building;
-                        buildingToSet.position = selected[0].tileCoord;
+                        buildingToSet.position = pos.Value;
                         buildingToSet.buildingID = state.buildingID_Incrementer;
                         buildingToSet.rotation = r.Value;
                         commandBuffer.AddComponent(entityInQueryIndex, newEnt, buildingToSet);

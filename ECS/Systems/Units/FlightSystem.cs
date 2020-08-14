@@ -79,7 +79,7 @@ public class FlightSystem : JobComponentSystem
             Mathf.Clamp(xIndex, 0, tilesPerWidth-1);
             Mathf.Clamp(yIndex, 0, tilesPerWidth-1);
 
-            int arrayIndex = yIndex * (tilesPerWidth-1) + xIndex;
+            int arrayIndex = yIndex * (tilesPerWidth-1) + xIndex - 1;
 
             return arrayIndex;
         }
