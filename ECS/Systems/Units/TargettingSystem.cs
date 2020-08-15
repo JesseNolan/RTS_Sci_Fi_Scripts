@@ -108,7 +108,13 @@ public class TargettingSystem : SystemBase
                         float mag = math.distance(fP.Position, position.Position);
                         //check to see if target is still within firing distance, if not, get new target
                         if (mag <= w.firingDistance)
-                            return;
+                        {
+
+                        }
+                        else
+                        {
+                            w.gotTarget = 0;
+                        }
                     }
                     else
                     {

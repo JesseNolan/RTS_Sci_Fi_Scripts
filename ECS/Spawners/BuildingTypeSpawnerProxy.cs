@@ -12,10 +12,7 @@ public class BuildingTypeSpawnerProxy : MonoBehaviour, IDeclareReferencedPrefabs
     public GameObject Terran_EnergySphere;
     public GameObject Terran_AquaStore;
     public GameObject Terran_PlasmaCannon;
-    public GameObject Road_Straight;
-    public GameObject Road_Corner;
-    public GameObject Road_T;
-    public GameObject Road_Intersection;
+    public GameObject Road;
 
     public GameObject Terran_Habitat_Construction;
     public GameObject Terran_House_Construction;
@@ -24,16 +21,6 @@ public class BuildingTypeSpawnerProxy : MonoBehaviour, IDeclareReferencedPrefabs
     public GameObject Terran_AquaStore_Construction;
     public GameObject Terran_PlasmaCannon_Construction;
 
-    UInt32 Terran_Habitat_Template = 33554431;
-    UInt32 Terran_House_Template = 473536;
-    UInt32 Terran_ResidentBlock_Template = 473536;
-    UInt32 Terran_EnergySphere_Template = 4096;
-    UInt32 Terran_AquaStore_Template = 473536;
-    UInt32 Terran_PlasmaCannon_Template = 6336;
-    UInt32 Road_Straight_Template = 4096;
-    UInt32 Road_Corner_Template = 4096;
-    UInt32 Road_T_Template = 4096;
-    UInt32 Road_Intersection_Template = 4096;
 
     // Referenced prefabs have to be declared so that the conversion system knows about them ahead of time
     public void DeclareReferencedPrefabs(List<GameObject> gameObjects)
@@ -50,10 +37,7 @@ public class BuildingTypeSpawnerProxy : MonoBehaviour, IDeclareReferencedPrefabs
         gameObjects.Add(Terran_EnergySphere_Construction);
         gameObjects.Add(Terran_AquaStore_Construction);
         gameObjects.Add(Terran_PlasmaCannon_Construction);
-        gameObjects.Add(Road_Straight);
-        gameObjects.Add(Road_Corner);
-        gameObjects.Add(Road_T);
-        gameObjects.Add(Road_Intersection);
+        gameObjects.Add(Road);
     }
 
     // Lets you convert the editor data representation to the entity optimal runtime representation
@@ -75,22 +59,7 @@ public class BuildingTypeSpawnerProxy : MonoBehaviour, IDeclareReferencedPrefabs
             Terran_AquaStore_Construction = conversionSystem.GetPrimaryEntity(Terran_AquaStore_Construction),
             Terran_PlasmaCannon_Construction = conversionSystem.GetPrimaryEntity(Terran_PlasmaCannon_Construction),
 
-            Road_Straight = conversionSystem.GetPrimaryEntity(Road_Straight),
-            Road_Corner = conversionSystem.GetPrimaryEntity(Road_Corner),
-            Road_T = conversionSystem.GetPrimaryEntity(Road_T),
-            Road_Intersection = conversionSystem.GetPrimaryEntity(Road_Intersection),
-
-            Terran_Habitat_Template = Terran_Habitat_Template,
-            Terran_House_Template = Terran_House_Template,
-            Terran_ResidentBlock_Template = Terran_ResidentBlock_Template,
-            Terran_EnergySphere_Template = Terran_EnergySphere_Template,
-            Terran_AquaStore_Template = Terran_AquaStore_Template,
-            Terran_PlasmaCannon_Template = Terran_PlasmaCannon_Template,
-            Road_Straight_Template = Road_Straight_Template,
-            Road_Corner_Template = Road_Corner_Template,
-            Road_T_Template = Road_T_Template,
-            Road_Intersection_Template = Road_Intersection_Template,
-
+            Road = conversionSystem.GetPrimaryEntity(Road),
         };
         dstManager.AddComponentData(entity, spawnerData);
     }
@@ -112,19 +81,5 @@ public struct BuildingTypeSpawner : IComponentData
     public Entity Terran_AquaStore_Construction;
     public Entity Terran_PlasmaCannon_Construction;
 
-    public Entity Road_Straight;
-    public Entity Road_Corner;
-    public Entity Road_T;
-    public Entity Road_Intersection;
-
-    public UInt32 Terran_Habitat_Template;
-    public UInt32 Terran_House_Template;
-    public UInt32 Terran_ResidentBlock_Template;
-    public UInt32 Terran_EnergySphere_Template;
-    public UInt32 Terran_AquaStore_Template;
-    public UInt32 Terran_PlasmaCannon_Template;
-    public UInt32 Road_Straight_Template;
-    public UInt32 Road_Corner_Template;
-    public UInt32 Road_T_Template;
-    public UInt32 Road_Intersection_Template;
+    public Entity Road;
 }
