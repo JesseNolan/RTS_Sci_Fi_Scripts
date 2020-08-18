@@ -112,6 +112,9 @@ public class TerrainSystem : ComponentSystem
             newTile.tileCoord = new float3(worldPosX, height, worldPosY);
             newTile.tilePenalty = 5;
             newTile.highlighted = 1;
+            newTile.hasRoad = false;
+            newTile.displayRoad = false;
+            newTile.roadEntityPresent = false;
 
             MainLoader.entityManager.SetComponentData(tileEntity, newTile);
         }
@@ -394,8 +397,7 @@ public struct Tile : IComponentData
     // bool isnt blittable yet so cant use :(
     public int isValid;
     public int highlighted;
-    public bool hasRoad;
-    public bool displayRoad;
+
     public bool hasBuilding;
     public int buildingID;
 
@@ -403,5 +405,7 @@ public struct Tile : IComponentData
     public int resourceID;
     public e_ResourceTypes resourceType;
 
-    //public bool isValid;
+    public bool hasRoad;
+    public bool displayRoad;
+    public bool roadEntityPresent;
 }
