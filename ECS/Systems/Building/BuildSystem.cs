@@ -154,7 +154,7 @@ public class BuildSystem : SystemBase
                 {
                     Tile tile = tileMap[currentIndex];
                     tile.isValid = 0;
-                    tile.hasRoad = true;
+                    tile.hasRoad = false;
                     tile.hasBuilding = true;
                     tile.buildingID = buildingID;
                     tileMap[currentIndex] = tile;

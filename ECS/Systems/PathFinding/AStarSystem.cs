@@ -29,7 +29,7 @@ public class AStarSystem : JobComponentSystem
             {
                 if (p.roadBuilding)
                 {
-                    if ((tiles[p.startIndex].isValid == 0) || (tiles[p.endIndex].isValid == 0))
+                    if ((tiles[p.startIndex].isValid == 0 && !tiles[p.startIndex].hasRoad) || (tiles[p.endIndex].isValid == 0 && !tiles[p.startIndex].hasRoad))
                     {
                         Debug.Log("AStar Job: start or end tile not valid");
                         commandBuffer.DestroyEntity(index, entity);
@@ -150,7 +150,7 @@ public class AStarSystem : JobComponentSystem
 
             for (int i = 0; i < indexes.Length; i++)
             {
-                if ((indexes[i] >= 0) && (indexes[i] < (tilesPerWidth * tilesPerWidth)) && (((tiles[indexes[i]].isValid == 1) && p.roadBuilding) || (tiles[indexes[i]].hasRoad && p.roadPathing)))
+                if ((indexes[i] >= 0) && (indexes[i] < (tilesPerWidth * tilesPerWidth)) && ((tiles[indexes[i]].isValid == 1 && p.roadBuilding) || (tiles[indexes[i]].isValid == 0 && p.roadBuilding && tiles[indexes[i]].hasRoad) || (tiles[indexes[i]].hasRoad && p.roadPathing)))
                 {
                     int dstDist = GetDistanceBetweenTilesWithoutDiagonal(p.endIndex, indexes[i]);
 

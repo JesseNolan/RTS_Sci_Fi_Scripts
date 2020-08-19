@@ -149,7 +149,7 @@ public class RoadSystem : SystemBase
 
                 if (input[0].MouseButtonUp0)
                 {
-                    if (t.displayRoad && !t.hasRoad)
+                    if (t.displayRoad && !t.hasRoad && t.isValid == 1)
                     {
                         t.hasRoad = true;
                         t.isValid = 0;
