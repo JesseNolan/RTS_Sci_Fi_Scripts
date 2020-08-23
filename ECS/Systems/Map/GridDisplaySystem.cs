@@ -21,6 +21,50 @@ public class GridDisplaySystem : SystemBase
     EntityQuery m_placingBuilding;
 
 
+    private static bool TileUnderPlacingBuilding(int selectedID, int check, float2x2 template, int tilesPerWidth)
+    {
+        int x1 = (int)template.c0.x;
+        int y1 = (int)template.c0.y;
+        int x2 = (int)template.c1.x;
+        int y2 = (int)template.c1.y;
+
+        bool evenX = (x2 - x1 + 1) % 2 == 0 ? true : false;
+        bool evenY = (y2 - y1 + 1) % 2 == 0 ? true : false;
+
+        int tileAnchorX;
+        int tileAnchorY;
+
+        if (evenX)
+            tileAnchorX = ((x2 - x1 + 1) / 2) - 1;
+        else
+            tileAnchorX = ((x2 - x1 + 1) / 2);
+
+        if (evenY)
+            tileAnchorY = ((y2 - y1 + 1) / 2) - 1;
+        else
+            tileAnchorY = ((y2 - y1 + 1) / 2);
+
+        // get the start index (0,0) position removing the offset of the tile anchor
+        int startIndex = selectedID - (tileAnchorY * tilesPerWidth) - tileAnchorX;
+
+        for (int x = 0; x < (x2 - x1 + 1); x++)
+        {
+            for (int y = 0; y < (y2 - y1 + 1); y++)
+            {
+                int currentIndex = startIndex + (y * tilesPerWidth) + x;
+
+                if (currentIndex == check)
+                {
+                    return true;
+                }
+
+            }
+        }
+
+        return false;
+    }
+
+
     protected override void OnUpdate()
     {
         var commandBuffer = m_EntityCommandBufferSystem.CreateCommandBuffer().AsParallelWriter();
@@ -33,6 +77,8 @@ public class GridDisplaySystem : SystemBase
 
         float gridHighlightDisplayDistance = Settings.Instance.gridHighlightDisplayDistance;
 
+        int tilesPerWidth = TerrainSystem.tilesPerWidth;
+
         var highlightJob = Entities
             .ForEach((Entity entity, int entityInQueryIndex, ref Tile t) =>
             {
@@ -41,13 +87,19 @@ public class GridDisplaySystem : SystemBase
                     if ((math.distance(t.tileCoord, selectedTile[0].tileCoord) < gridHighlightDisplayDistance) && (t.isValid == 1))
                     {
 
-                        for (int i = 0; i < placingBuilding.Length; i++)
+                        if (gameState[0].gameState == e_GameStates.state_BuildingPlacement)
                         {
-                            
-                            // check if current tile falls within this template
-
+                            // if we are in building placement, we should have a placing building
+                            for (int i = 0; i < placingBuilding.Length; i++)
+                            {
+                                if (TileUnderPlacingBuilding(selectedTile[0].tileID, t.tileID, placingBuilding[0].templateCoords, tilesPerWidth))
+                                {
+                                    t.highlighted = 0;
+                                    return;
+                                }
+                            }
                         }
-
+                        
 
                         if (t.highlighted == 0)
                         {
@@ -80,6 +132,17 @@ public class GridDisplaySystem : SystemBase
                     if ((math.distance(t.Value, selectedTile[0].tileCoord) >= gridHighlightDisplayDistance) || (tileMap[g.tileIndex].isValid == 0))
                     {
                         commandBuffer.DestroyEntity(entityInQueryIndex, entity);
+                    }
+
+                    if (gameState[0].gameState == e_GameStates.state_BuildingPlacement)
+                    {
+                        for (int i = 0; i < placingBuilding.Length; i++)
+                        {
+                            if (TileUnderPlacingBuilding(selectedTile[0].tileID, g.tileIndex, placingBuilding[0].templateCoords, tilesPerWidth))
+                            {
+                                commandBuffer.DestroyEntity(entityInQueryIndex, entity);
+                            }
+                        }
                     }
                 }
                 else
